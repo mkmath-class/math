@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>이민기T</title>
+<meta name="theme-color" content="#14213d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="이민기T">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+  html,body{margin:0;height:100%;background:#14213d;overflow:hidden}
+  /* 앱(구글 웹앱)을 화면 가득 넣는다. 위쪽 안전영역(노치)만큼 남색으로 비워 둔다 */
+  #app{position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;bottom:0;width:100%;height:calc(100% - env(safe-area-inset-top,0px));border:0;background:#14213d}
+  #splash{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+    font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#fff;transition:opacity .4s}
+  #splash b{font-size:44px;font-weight:900;letter-spacing:-.04em}
+  #splash b span{color:#e3b23c}
+  #splash i{font-style:normal;font-size:13px;letter-spacing:.3em;color:#c9d3e6}
+  #splash.off{opacity:0;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="splash"><b>이민기<span>T</span></b><i>MATH CLASS</i></div>
+<iframe id="app" title="이민기T"
+  src="https://script.google.com/macros/s/AKfycbz13-kutirHs2bIl38bjfH0FqZi6k8DYcjCaq7r0RHzfqxrxwd2ywtv2IpZiVLV6bleYQ/exec"
+  allow="clipboard-write"></iframe>
+<script>
+  // 앱이 뜨면 시작 화면을 걷는다 (최대 6초)
+  var f=document.getElementById('app'), s=document.getElementById('splash');
+  function hide(){ setTimeout(function(){ s.classList.add('off'); }, 600); }
+  f.addEventListener('load', hide); setTimeout(hide, 6000);
+</script>
+</body>
+</html>
