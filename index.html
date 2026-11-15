@@ -34,6 +34,21 @@
   var f=document.getElementById('app'), s=document.getElementById('splash');
   function hide(){ setTimeout(function(){ s.classList.add('off'); }, 600); }
   f.addEventListener('load', hide); setTimeout(hide, 6000);
+
+  // 휴대폰 뒤로가기 = 앱 안 이전 화면. 앱이 화면을 옮길 때마다 기록을 하나씩 쌓고,
+  // 뒤로가기가 눌리면 앱에 "이전 화면으로" 신호를 보낸다.
+  var appWin=null;
+  function okOrigin(o){ return /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/.test(o) || o==='https://script.google.com'; }
+  window.addEventListener('message', function(e){
+    if(!okOrigin(e.origin) || !e.data || typeof e.data!=='object') return;
+    if(e.data.gz==='hello'){ appWin=e.source; e.source.postMessage({gz:'wrap'}, e.origin); appOrigin=e.origin; }
+    else if(e.data.gz==='push'){ history.pushState({gz:1}, ''); }
+    else if(e.data.gz==='back'){ history.back(); }
+  });
+  var appOrigin='*';
+  window.addEventListener('popstate', function(){
+    if(appWin) appWin.postMessage({gz:'pop'}, appOrigin);
+  });
 </script>
 </body>
 </html>
