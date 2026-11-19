@@ -44,6 +44,7 @@
     if(e.data.gz==='hello'){ appWin=e.source; e.source.postMessage({gz:'wrap'}, e.origin); appOrigin=e.origin; }
     else if(e.data.gz==='push'){ history.pushState({gz:1}, ''); }
     else if(e.data.gz==='back'){ history.back(); }
+    else if(e.data.gz==='reload'){ f.src=f.src.split('?')[0]+'?v='+Date.now(); }
   });
   var appOrigin='*';
   window.addEventListener('popstate', function(){
