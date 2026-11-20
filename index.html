@@ -22,7 +22,16 @@
   #splash b span{color:#e3b23c}
   #splash i{font-style:normal;font-size:13px;letter-spacing:.3em;color:#c9d3e6}
   #splash.off{opacity:0;pointer-events:none}
+  /* 알림 받기 안내 */
+  #pushBox{position:fixed;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:9;background:#fff;border-radius:16px;
+    box-shadow:0 8px 28px rgba(10,20,40,.28);padding:14px;font-family:"Noto Sans KR",-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;color:#14213d;max-width:480px;margin:0 auto}
+  #pushBox b{display:block;font-size:15px;margin-bottom:4px}
+  #pushBox p{margin:0;font-size:13px;line-height:1.5;color:#5b6475}
+  #pushBox .r{display:flex;gap:8px;margin-top:12px}
+  #pushBox button{flex:1;border:0;border-radius:10px;padding:11px;font-size:14px;font-weight:700;background:#14213d;color:#fff;font-family:inherit}
+  #pushBox button.g{background:#eef0f3;color:#5b6475}
 </style>
+<script src="fb-config.js"></script>
 </head>
 <body>
 <div id="splash"><b>이민기<span>T</span></b><i>MATH CLASS</i></div>
@@ -46,8 +55,54 @@
     if(e.data.gz==='hello'){ appWin=e.source; appOrigin=e.origin; e.source.postMessage({gz:'wrap', v:2}, e.origin); }
     else if(e.data.gz==='arm'){ exiting=false; arm(); }
     else if(e.data.gz==='exit'){ exiting=true; armed=false; history.back(); setTimeout(function(){ history.back(); try{ window.close(); }catch(x){} }, 80); }
+    else if(e.data.gz==='push'){ onPushAsk(); }
     else if(e.data.gz==='reload'){ f.src=f.src.split('?')[0]+'?v='+Date.now(); }
   });
+  // ───── 휴대폰 알림 (웹 푸시) ─────
+  // 앱이 학생 로그인 뒤 {gz:'push'}를 보내면: 이미 허용 → 토큰을 앱에 전달 / 아직 → "알림 받기" 안내 / 아이폰(홈 화면 앱 아님) → 홈 화면 추가 안내
+  var FBV='10.12.2', fbMsg=null;
+  function pushCfg(){ return !!(self.FB_CFG && self.FB_CFG.apiKey && self.FB_VAPID) && 'serviceWorker' in navigator; }
+  function isIOS(){ return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1); }
+  function standalone(){ return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone===true; }
+  function later(k,days){ try{ var t=+localStorage.getItem(k)||0; return Date.now()-t < days*864e5; }catch(x){ return false; } }
+  function mark(k){ try{ localStorage.setItem(k, String(Date.now())); }catch(x){} }
+  function loadJs(src){ return new Promise(function(ok,no){ var t=document.createElement('script'); t.src=src; t.onload=ok; t.onerror=no; document.head.appendChild(t); }); }
+  function getTok(){
+    return navigator.serviceWorker.register('sw.js').then(function(reg){
+      return (window.firebase ? Promise.resolve() : loadJs('https://www.gstatic.com/firebasejs/'+FBV+'/firebase-app-compat.js')
+        .then(function(){ return loadJs('https://www.gstatic.com/firebasejs/'+FBV+'/firebase-messaging-compat.js'); }))
+      .then(function(){
+        if(!fbMsg){ firebase.initializeApp(self.FB_CFG); fbMsg=firebase.messaging();
+          fbMsg.onMessage(function(p){ var d=p.data||{}; reg.showNotification(d.title||'이민기T',{body:d.body||'',icon:'icon-192.png',data:{url:d.url||'./'}}); }); }
+        return fbMsg.getToken({ vapidKey: self.FB_VAPID, serviceWorkerRegistration: reg });
+      });
+    });
+  }
+  function sendTok(){ getTok().then(function(t){ if(t && appWin) appWin.postMessage({gz:'pushtoken', token:t}, appOrigin); }).catch(function(e){ console.warn('push', e); }); }
+  function box(title, text, yes, no, onYes, onNo){
+    var old=document.getElementById('pushBox'); if(old) old.remove();
+    var b=document.createElement('div'); b.id='pushBox';
+    b.innerHTML='<b>'+title+'</b><p>'+text+'</p><div class="r">'+(no?'<button class="g" id="pbNo">'+no+'</button>':'')+'<button id="pbYes">'+yes+'</button></div>';
+    document.body.appendChild(b);
+    document.getElementById('pbYes').onclick=function(){ b.remove(); if(onYes) onYes(); };
+    if(no) document.getElementById('pbNo').onclick=function(){ b.remove(); if(onNo) onNo(); };
+  }
+  function onPushAsk(){
+    if(!pushCfg()) return;
+    if(isIOS() && !standalone()){
+      if(later('gz_ios_tip',7)) return;
+      box('🔔 아이폰에서 알림 받기', '아래 공유 버튼(⬆︎) → <b style="display:inline;font-size:13px">홈 화면에 추가</b>를 누른 뒤, 홈 화면의 이민기T 아이콘으로 열면 새 과제·공지·미흡 알림을 받을 수 있어요. (iOS 16.4 이상)',
+        '알겠어요', null, function(){ mark('gz_ios_tip'); });
+      return;
+    }
+    if(!('Notification' in window)) return;
+    if(Notification.permission==='granted'){ sendTok(); return; }
+    if(Notification.permission==='denied' || later('gz_push_later',3)) return;
+    box('🔔 휴대폰 알림을 받을까요?', '새 과제, 민기쌤 공지, 미흡 항목, 마감 전날 미완료 과제를 알려 드려요.', '알림 받기', '나중에',
+      function(){ Notification.requestPermission().then(function(p){ if(p==='granted') sendTok(); }); },
+      function(){ mark('gz_push_later'); });
+  }
+
   window.addEventListener('popstate', function(){
     if(exiting) return;
     armed=false; arm();
