@@ -52,7 +52,7 @@
   arm();
   window.addEventListener('message', function(e){
     if(!okOrigin(e.origin) || !e.data || typeof e.data!=='object') return;
-    if(e.data.gz==='hello'){ appWin=e.source; appOrigin=e.origin; e.source.postMessage({gz:'wrap', v:2}, e.origin); }
+    if(e.data.gz==='hello'){ appWin=e.source; appOrigin=e.origin; e.source.postMessage({gz:'wrap', v:3}, e.origin); }
     else if(e.data.gz==='arm'){ exiting=false; arm(); }
     else if(e.data.gz==='exit'){ exiting=true; armed=false; history.back(); setTimeout(function(){ history.back(); try{ window.close(); }catch(x){} }, 80); }
     else if(e.data.gz==='push'){ onPushAsk(!!e.data.force); }
@@ -78,8 +78,18 @@
       });
     });
   }
-  function sendTok(force){ getTok().then(function(t){ if(t && appWin) appWin.postMessage({gz:'pushtoken', token:t}, appOrigin); }).catch(function(e){ console.warn('push', e);
-    if(force) box('🔔 알림 등록이 안 됐어요', '잠시 뒤 앱을 다시 열고 한 번 더 눌러 주세요. 계속 안 되면 민기쌤께 알려 주세요.', '확인'); }); }
+  // 토큰 받기: 15초 넘게 걸리면 실패로 보고, 직접 누른 경우(force)엔 진행·실패를 화면에 보여 준다
+  function sendTok(force){
+    if(force) box('🔔 알림 등록 중…', '잠시만 기다려 주세요.', '닫기');
+    var to=new Promise(function(_,no){ setTimeout(function(){ no(new Error('timeout')); }, 15000); });
+    Promise.race([getTok(), to]).then(function(t){
+      if(!t) throw new Error('no token');
+      if(appWin) appWin.postMessage({gz:'pushtoken', token:t}, appOrigin);
+      if(force){ var b=document.getElementById('pushBox'); if(b) b.remove(); }
+    }).catch(function(e){ console.warn('push', e);
+      if(force) box('🔔 알림 등록이 안 됐어요', '인터넷 연결을 확인하고 앱을 완전히 닫았다가 다시 열어 한 번 더 눌러 주세요. 계속 안 되면 민기쌤께 알려 주세요. ('+String(e && e.message || e).slice(0,60)+')', '확인'); });
+  }
+  function ack(force, st){ if(force && appWin) appWin.postMessage({gz:'pushack', s:st}, appOrigin); }
   var NO_PUSH='이 브라우저는 알림을 지원하지 않아요. 안드로이드는 크롬으로, 아이폰은 홈 화면에 추가한 이민기T 아이콘으로 열어 주세요.';
   function box(title, text, yes, no, onYes, onNo){
     var old=document.getElementById('pushBox'); if(old) old.remove();
@@ -91,6 +101,7 @@
   }
   // force = 학생이 앱 홈의 [알림 켜기]를 직접 누름 → '나중에'·안내 기록과 상관없이 바로 묻고, 막혀 있으면 푸는 방법을 알려 준다
   function onPushAsk(force){
+    ack(force, 'ok');
     if(!pushCfg()){ if(force) box('🔔 알림을 켤 수 없어요', NO_PUSH, '확인'); return; }
     if(isIOS() && !standalone()){
       if(!force && later('gz_ios_tip',7)) return;
